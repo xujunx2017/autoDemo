@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON验证工具</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .tool-header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tool-header h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .tool-description {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .validator-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .validator-section h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .CodeMirror {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 300px !important;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .result {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .result-header {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+
+        .validation-result {
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid;
+            margin-bottom: 10px;
+        }
+
+        .validation-result.valid {
+            background: #f0f9f0;
+            border-color: #27ae60;
+            color: #27ae60;
+        }
+
+        .validation-result.invalid {
+            background: #fdf2f2;
+            border-color: #e74c3c;
+            color: #e74c3c;
+        }
+
+        .json-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #3498db;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tool-header">
+            <h1>JSON验证工具</h1>
+            <p class="tool-description">验证JSON数据的有效性，分析JSON结构统计信息</p>
+        </div>
+
+        <div class="validator-section">
+            <h3>输入JSON数据</h3>
+            <textarea id="json-input" placeholder="请输入或粘贴JSON数据进行验证...">{
+  "name": "张三",
+  "age": 25,
+  "address": {
+    "city": "北京",
+    "street": "朝阳路"
+  },
+  "hobbies": ["读书", "游泳"],
+  "isStudent": false,
+  "scores": [95, 87, 92]
+}</textarea>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-primary" onclick="validateJson()">验证JSON</button>
+            <button class="btn btn-secondary" onclick="clearAll()">清空</button>
+            <button class="btn btn-secondary" onclick="loadExample()">加载示例</button>
+            <button class="btn btn-secondary" onclick="copyCurrentJson()">复制内容</button>
+            <button class="btn btn-secondary" onclick="restoreOriginal()" id="restore-btn" style="display: none;">恢复原始</button>
+        </div>
+
+        <div id="result" class="result" style="display: none;">
+            <h3 class="result-header">验证结果</h3>
+            <div id="validation-content"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+
+    <script>
+        let editor;
+
+        let originalJson = '';
+
+        // 初始化编辑器
+        document.addEventListener('DOMContentLoaded', function() {
+            editor = CodeMirror.fromTextArea(document.getElementById('json-input'), {
+                mode: 'application/json',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true
+            });
+            
+            // 保存初始内容
+            originalJson = editor.getValue();
+            if (originalJson.trim()) {
+                document.getElementById('restore-btn').style.display = 'inline-block';
+            }
+        });
+
+        function validateJson() {
+            const jsonText = editor.getValue();
+            
+            if (!jsonText.trim()) {
+                showResult('请输入JSON数据', 'invalid');
+                return;
+            }
+
+            try {
+                const parsed = JSON.parse(jsonText);
+                const stats = analyzeJson(parsed);
+                
+                let result = `
+                    <div class="validation-result valid">
+                        <strong>✅ JSON格式有效</strong>
+                    </div>
+                `;
+                
+                result += `
+                    <div class="json-stats">
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.objects}</div>
+                            <div class="stat-label">对象</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.arrays}</div>
+                            <div class="stat-label">数组</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.strings}</div>
+                            <div class="stat-label">字符串</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.numbers}</div>
+                            <div class="stat-label">数字</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.booleans}</div>
+                            <div class="stat-label">布尔值</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-value">${stats.nulls}</div>
+                            <div class="stat-label">空值</div>
+                        </div>
+                    </div>
+                `;
+                
+                showResult(result);
+            } catch (e) {
+                const result = `
+                    <div class="validation-result invalid">
+                        <strong>❌ JSON格式错误</strong><br>
+                        ${e.message}
+                    </div>
+                `;
+                showResult(result);
+            }
+        }
+
+        function analyzeJson(obj) {
+            let stats = {
+                objects: 0,
+                arrays: 0,
+                strings: 0,
+                numbers: 0,
+                booleans: 0,
+                nulls: 0
+            };
+
+            function count(obj) {
+                if (obj === null) {
+                    stats.nulls++;
+                } else if (typeof obj === 'object') {
+                    if (Array.isArray(obj)) {
+                        stats.arrays++;
+                        obj.forEach(count);
+                    } else {
+                        stats.objects++;
+                        Object.values(obj).forEach(count);
+                    }
+                } else if (typeof obj === 'string') {
+                    stats.strings++;
+                } else if (typeof obj === 'number') {
+                    stats.numbers++;
+                } else if (typeof obj === 'boolean') {
+                    stats.booleans++;
+                }
+            }
+
+            count(obj);
+            return stats;
+        }
+
+        function clearAll() {
+            editor.setValue('');
+            document.getElementById('result').style.display = 'none';
+        }
+
+        function loadExample() {
+            const example = {
+                "users": [
+                    {
+                        "id": 1,
+                        "name": "张三",
+                        "email": "zhangsan@example.com",
+                        "profile": {
+                            "age": 25,
+                            "city": "北京",
+                            "hobbies": ["读书", "游泳"]
+                        },
+                        "active": true
+                    },
+                    {
+                        "id": 2,
+                        "name": "李四",
+                        "email": "lisi@example.com",
+                        "profile": {
+                            "age": 30,
+                            "city": "上海",
+                            "hobbies": ["跑步", "摄影"]
+                        },
+                        "active": false
+                    }
+                ],
+                "metadata": {
+                    "total": 2,
+                    "page": 1,
+                    "limit": 10
+                }
+            };
+            
+            editor.setValue(JSON.stringify(example, null, 2));
+            validateJson();
+        }
+
+        function showResult(content) {
+            const result = document.getElementById('result');
+            const contentDiv = document.getElementById('validation-content');
+            
+            contentDiv.innerHTML = content;
+            result.style.display = 'block';
+        }
+
+        function copyCurrentJson() {
+            const content = editor.getValue();
+            if (content) {
+                navigator.clipboard.writeText(content).then(() => {
+                    showToast('已复制当前JSON内容到剪贴板！');
+                });
+            }
+        }
+
+        function restoreOriginal() {
+            if (originalJson.trim()) {
+                editor.setValue(originalJson);
+                validateJson();
+                showToast('已恢复到原始JSON内容！');
+            }
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                z-index: 1000;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                font-size: 14px;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>

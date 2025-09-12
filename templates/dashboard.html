@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>控制台 - JSON工具箱</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        .sidebar {
+            width: 250px;
+            background: #2c3e50;
+            color: white;
+            padding: 20px 0;
+            height: 100vh;
+            position: fixed;
+            left: 0;
+            top: 0;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 0 20px 20px;
+            border-bottom: 1px solid #34495e;
+            margin-bottom: 20px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            margin-bottom: 5px;
+        }
+
+        .user-info {
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+
+        .tools-nav {
+            list-style: none;
+        }
+
+        .tool-item {
+            margin-bottom: 2px;
+        }
+
+        .tool-link {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ecf0f1;
+            text-decoration: none;
+            transition: all 0.3s;
+            border-left: 3px solid transparent;
+        }
+
+        .tool-link:hover {
+            background: #34495e;
+            border-left-color: #3498db;
+        }
+
+        .tool-link.active {
+            background: #34495e;
+            border-left-color: #3498db;
+            color: white;
+        }
+
+        .tool-icon {
+            font-size: 20px;
+            margin-right: 10px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .tool-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .tool-description {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-top: 2px;
+        }
+
+        .logout-section {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            right: 0;
+            padding: 0 20px;
+            border-top: 1px solid #34495e;
+            padding-top: 20px;
+        }
+
+        .logout-btn {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            text-decoration: none;
+            text-align: center;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 250px;
+            min-height: 100vh;
+            background: white;
+            box-shadow: -2px 0 10px rgba(0,0,0,0.1);
+        }
+
+        .content-header {
+            background: white;
+            padding: 20px 30px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .content-title {
+            font-size: 24px;
+            color: #2c3e50;
+        }
+
+        .welcome-section {
+            padding: 40px 30px;
+            text-align: center;
+        }
+
+        .welcome-title {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .welcome-subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .tool-card {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .tool-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-color: #3498db;
+        }
+
+        .tool-card-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .tool-card-name {
+            font-size: 20px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .tool-card-description {
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+
+        iframe {
+            width: 100%;
+            height: calc(100vh - 80px);
+            border: none;
+        }
+
+        .iframe-container {
+            height: calc(100vh - 80px);
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>JSON工具箱</h2>
+            <div class="user-info">{{ request.user.username }}</div>
+        </div>
+
+        <nav>
+            <ul class="tools-nav">
+                {% for tool in tools %}
+                <li class="tool-item">
+                    <a href="#" class="tool-link" data-tool="{{ tool.id }}" data-url="{{ tool.url }}">
+                        <span class="tool-icon">{{ tool.icon }}</span>
+                        <div>
+                            <div class="tool-name">{{ tool.name }}</div>
+                            <div class="tool-description">{{ tool.description }}</div>
+                        </div>
+                    </a>
+                </li>
+                {% endfor %}
+            </ul>
+        </nav>
+
+        <div class="logout-section">
+            <form method="post" action="{% url 'logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="logout-btn">退出登录</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="main-content">
+        <div class="content-header">
+            <h1 class="content-title" id="current-title">欢迎使用JSON工具箱</h1>
+        </div>
+
+        <div id="welcome-content">
+            <div class="welcome-section">
+                <h1 class="welcome-title">欢迎使用JSON工具箱</h1>
+                <p class="welcome-subtitle">请选择左侧工具开始使用</p>
+                
+                <div class="tools-grid">
+                    {% for tool in tools %}
+                    <a href="#" class="tool-card" data-tool="{{ tool.id }}" data-url="{{ tool.url }}">
+                        <div class="tool-card-icon">{{ tool.icon }}</div>
+                        <div class="tool-card-name">{{ tool.name }}</div>
+                        <div class="tool-card-description">{{ tool.description }}</div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div id="tool-content" class="iframe-container" style="display: none;">
+            <iframe id="tool-frame" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        // 默认选中第一个工具
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstTool = document.querySelector('.tool-link[data-tool]');
+            if (firstTool) {
+                loadTool(firstTool.dataset.tool, firstTool.dataset.url);
+            }
+        });
+
+        // 工具切换功能
+        function loadTool(toolId, url) {
+            const title = document.querySelector(`[data-tool="${toolId}"] .tool-name`).textContent;
+            
+            // 更新标题
+            document.getElementById('current-title').textContent = title;
+            
+            // 隐藏欢迎页面，显示工具内容
+            document.getElementById('welcome-content').style.display = 'none';
+            document.getElementById('tool-content').style.display = 'block';
+            
+            // 加载工具页面
+            const frame = document.getElementById('tool-frame');
+            frame.src = url;
+            
+            // 更新导航状态
+            document.querySelectorAll('.tool-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            document.querySelectorAll(`[data-tool="${toolId}"]`).forEach(el => {
+                el.classList.add('active');
+            });
+        }
+
+        // 绑定点击事件
+        document.querySelectorAll('[data-tool]').forEach(element => {
+            element.addEventListener('click', function(e) {
+                e.preventDefault();
+                loadTool(this.dataset.tool, this.dataset.url);
+            });
+        });
+
+        // 响应式处理
+        window.addEventListener('resize', function() {
+            const frame = document.getElementById('tool-frame');
+            if (frame.src) {
+                frame.style.height = window.innerHeight - 80 + 'px';
+            }
+        });
+    </script>
+</body>
+</html>

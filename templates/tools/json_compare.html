@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON数据比对工具</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+
+        .tabs {
+            display: flex;
+            background: white;
+            border-radius: 8px 8px 0 0;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px 20px;
+            background: #f8f9fa;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: #666;
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background: white;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .tab:hover {
+            background: #e9ecef;
+        }
+
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .json-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 20px;
+            min-height: 500px;
+        }
+
+        .json-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .json-section h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .CodeMirror {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            height: 400px !important;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .controls {
+            padding: 20px;
+            text-align: center;
+            border-top: 1px solid #eee;
+        }
+
+        .compare-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+
+        .compare-btn:hover {
+            background: #5a6fd8;
+        }
+
+        .clear-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 0 10px;
+        }
+
+        .clear-btn:hover {
+            background: #5a6268;
+        }
+
+        .results {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            margin: 20px;
+        }
+
+        .result-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border-left: 4px solid;
+        }
+
+        .result-item.missing-in-first {
+            background: #fff3cd;
+            border-color: #ffc107;
+        }
+
+        .result-item.missing-in-second {
+            background: #d1ecf1;
+            border-color: #17a2b8;
+        }
+
+        .result-item.type-mismatch,
+        .result-item.value-mismatch {
+            background: #f8d7da;
+            border-color: #dc3545;
+        }
+
+        .result-item.list-length-mismatch {
+            background: #d4edda;
+            border-color: #28a745;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .no-differences {
+            text-align: center;
+            padding: 20px;
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .json-format-btn {
+            background: #6f42c1;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .json-format-btn:hover {
+            background: #5a2d8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" style="max-width: 1400px; margin: 0 auto;">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('compare')">JSON比对</button>
+            <button class="tab" onclick="switchTab('help')">使用说明</button>
+        </div>
+
+        <div id="compare-tab" class="tab-content active">
+            <div class="json-inputs">
+                <div class="json-section">
+                    <h3>JSON 1</h3>
+                    <button class="json-format-btn" onclick="formatJson('json1')">格式化JSON</button>
+                    <textarea id="json1" placeholder="请输入第一个JSON数据...">{
+  "name": "张三",
+  "age": 25,
+  "address": {
+    "city": "北京",
+    "street": "朝阳路"
+  },
+  "hobbies": ["读书", "游泳"]
+}</textarea>
+                </div>
+                <div class="json-section">
+                    <h3>JSON 2</h3>
+                    <button class="json-format-btn" onclick="formatJson('json2')">格式化JSON</button>
+                    <textarea id="json2" placeholder="请输入第二个JSON数据...">{
+  "name": "李四",
+  "age": 25,
+  "address": {
+    "city": "上海",
+    "street": "南京路"
+  },
+  "hobbies": ["读书", "游泳", "跑步"],
+  "phone": "13800138000"
+}</textarea>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button class="compare-btn" onclick="compareJson()">开始比对</button>
+                <button class="clear-btn" onclick="clearAll()">清空所有</button>
+                <button class="btn-copy" onclick="copyJson1()">复制JSON1</button>
+                <button class="btn-copy" onclick="copyJson2()">复制JSON2</button>
+                <button class="btn-restore" onclick="restoreExamples()" style="display: none;">恢复示例</button>
+            </div>
+
+            <div class="loading">
+                <p>正在比对数据...</p>
+            </div>
+
+            <div id="results" class="results" style="display: none;">
+                <h3>比对结果</h3>
+                <div id="result-content"></div>
+            </div>
+        </div>
+
+        <div id="help-tab" class="tab-content">
+            <div style="padding: 20px;">
+                <h3>使用说明</h3>
+                <h4>功能介绍</h4>
+                <p>本工具用于比较两个JSON数据结构的差异，可以检测：</p>
+                <ul style="margin: 10px 0 20px 20px;">
+                    <li>缺失的字段</li>
+                    <li>数据类型不匹配</li>
+                    <li>数值或字符串差异</li>
+                    <li>数组长度不一致</li>
+                    <li>嵌套对象的差异</li>
+                </ul>
+
+                <h4>使用方法</h4>
+                <ol style="margin: 10px 0 20px 20px;">
+                    <li>在左侧输入第一个JSON数据</li>
+                    <li>在右侧输入第二个JSON数据</li>
+                    <li>点击"开始比对"按钮查看差异</li>
+                    <li>使用"格式化JSON"按钮美化输入格式</li>
+                </ol>
+
+                <h4>示例数据</h4>
+                <p>您可以使用右侧提供的示例数据进行测试，观察工具如何识别不同JSON结构之间的差异。</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/javascript/javascript.min.js"></script>
+
+    <script>
+        let editor1, editor2;
+
+        // 初始化CodeMirror编辑器
+        document.addEventListener('DOMContentLoaded', function() {
+            editor1 = CodeMirror.fromTextArea(document.getElementById('json1'), {
+                mode: 'application/json',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true
+            });
+
+            editor2 = CodeMirror.fromTextArea(document.getElementById('json2'), {
+                mode: 'application/json',
+                theme: 'monokai',
+                lineNumbers: true,
+                autoCloseBrackets: true,
+                matchBrackets: true
+            });
+        });
+
+        function switchTab(tabName) {
+            const tabs = document.querySelectorAll('.tab');
+            const contents = document.querySelectorAll('.tab-content');
+
+            tabs.forEach(tab => tab.classList.remove('active'));
+            contents.forEach(content => content.classList.remove('active'));
+
+            if (tabName === 'compare') {
+                document.querySelector('.tab:nth-child(1)').classList.add('active');
+                document.getElementById('compare-tab').classList.add('active');
+            } else if (tabName === 'help') {
+                document.querySelector('.tab:nth-child(2)').classList.add('active');
+                document.getElementById('help-tab').classList.add('active');
+            }
+        }
+
+        function formatJson(editorId) {
+            try {
+                let editor = editorId === 'json1' ? editor1 : editor2;
+                const content = editor.getValue();
+                if (content.trim()) {
+                    const formatted = JSON.stringify(JSON.parse(content), null, 2);
+                    editor.setValue(formatted);
+                }
+            } catch (e) {
+                alert('JSON格式错误: ' + e.message);
+            }
+        }
+
+        async function compareJson() {
+            const json1 = editor1.getValue();
+            const json2 = editor2.getValue();
+
+            if (!json1.trim() || !json2.trim()) {
+                alert('请填写两个JSON数据');
+                return;
+            }
+
+            document.querySelector('.loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/compare-json/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ json1, json2 })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    displayResults(data.result);
+                } else {
+                    alert('错误: ' + data.error);
+                }
+            } catch (error) {
+                alert('请求失败: ' + error.message);
+            } finally {
+                document.querySelector('.loading').style.display = 'none';
+            }
+        }
+
+        function displayResults(differences) {
+            const resultContent = document.getElementById('result-content');
+            const resultsDiv = document.getElementById('results');
+
+            if (differences.length === 0) {
+                resultContent.innerHTML = '<div class="no-differences">两个JSON数据完全一致！</div>';
+            } else {
+                let html = '';
+                differences.forEach(diff => {
+                    const typeClass = diff.type.replace(/_/g, '-');
+                    let content = '';
+
+                    switch (diff.type) {
+                        case 'missing_in_first':
+                            content = `<strong>${diff.path}</strong>: 第一个JSON中缺失，第二个JSON中的值为: <code>${JSON.stringify(diff.value2)}</code>`;
+                            break;
+                        case 'missing_in_second':
+                            content = `<strong>${diff.path}</strong>: 第二个JSON中缺失，第一个JSON中的值为: <code>${JSON.stringify(diff.value1)}</code>`;
+                            break;
+                        case 'type_mismatch':
+                            content = `<strong>${diff.path}</strong>: 数据类型不匹配 - 第一个: <code>${typeof diff.value1}(${JSON.stringify(diff.value1)})</code>, 第二个: <code>${typeof diff.value2}(${JSON.stringify(diff.value2)})</code>`;
+                            break;
+                        case 'value_mismatch':
+                            content = `<strong>${diff.path}</strong>: 数值不匹配 - 第一个: <code>${JSON.stringify(diff.value1)}</code>, 第二个: <code>${JSON.stringify(diff.value2)}</code>`;
+                            break;
+                        case 'list_length_mismatch':
+                            content = `<strong>${diff.path}</strong>: 数组长度不匹配 - 第一个: <code>${diff.value1}</code>个元素, 第二个: <code>${diff.value2}</code>个元素`;
+                            break;
+                    }
+
+                    html += `<div class="result-item ${typeClass}">${content}</div>`;
+                });
+                resultContent.innerHTML = html;
+            }
+
+            resultsDiv.style.display = 'block';
+        }
+
+        function clearAll() {
+            editor1.setValue('');
+            editor2.setValue('');
+            document.getElementById('results').style.display = 'none';
+        }
+
+        function copyJson1() {
+            const content = editor1.getValue();
+            if (content) {
+                navigator.clipboard.writeText(content).then(() => {
+                    showToast('已复制JSON1内容到剪贴板！');
+                });
+            }
+        }
+
+        function copyJson2() {
+            const content = editor2.getValue();
+            if (content) {
+                navigator.clipboard.writeText(content).then(() => {
+                    showToast('已复制JSON2内容到剪贴板！');
+                });
+            }
+        }
+
+        function restoreExamples() {
+            const example1 = {
+                "name": "张三",
+                "age": 25,
+                "address": {
+                    "city": "北京",
+                    "street": "朝阳路"
+                },
+                "hobbies": ["读书", "游泳"],
+                "phone": "13800138000"
+            };
+            
+            const example2 = {
+                "name": "李四",
+                "age": 30,
+                "address": {
+                    "city": "上海",
+                    "street": "南京路"
+                },
+                "hobbies": ["跑步", "摄影", "旅游"],
+                "email": "lisi@example.com"
+            };
+            
+            editor1.setValue(JSON.stringify(example1, null, 2));
+            editor2.setValue(JSON.stringify(example2, null, 2));
+            showToast('已恢复示例数据！');
+        }
+
+        function showToast(message) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #4CAF50;
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                z-index: 1000;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    </script>
+</body>
+</html>
