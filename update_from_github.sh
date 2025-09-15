@@ -1,48 +1,47 @@
 #!/bin/bash
 
-# 华为云服务器自动更新脚本
-# 放置在华为云服务器上运行
+# Huawei Cloud auto-update script
+# Run this script on Huawei Cloud server
 
 set -e
 
-echo "🔄 从GitHub拉取最新代码..."
+echo "Starting auto-update from GitHub..."
 
-# 检查是否在项目目录中
+# Check if in project directory
 if [ ! -f "manage.py" ]; then
-    echo "❌ 请在 autoDemo 目录下运行此脚本"
+    echo "ERROR: Please run this script in autoDemo directory"
     exit 1
 fi
 
-# 拉取最新代码
-echo "📥 拉取最新代码..."
+# Pull latest code
+echo "Pulling latest code..."
 git pull origin main
 
-# 检查是否有更新
 if [ $? -eq 0 ]; then
-    echo "✅ 代码已更新到最新版本"
+    echo "Code updated successfully"
     
-    # 更新依赖（如果有requirements.txt变更）
-    echo "📦 检查依赖更新..."
+    # Update dependencies
+    echo "Updating dependencies..."
     pip3 install -r requirements.txt --upgrade
     
-    # 数据库迁移（如果有变更）
-    echo "🗄️ 检查数据库迁移..."
+    # Database migrations
+    echo "Running database migrations..."
     python3 manage.py makemigrations
     python3 manage.py migrate
     
-    # 收集静态文件
-    echo "📁 收集静态文件..."
+    # Collect static files
+    echo "Collecting static files..."
     python3 manage.py collectstatic --noinput
     
-    echo "🎉 更新完成！"
+    echo "Update completed!"
     echo ""
-    echo "重启服务命令："
-    echo "1. 开发环境: python3 manage.py runserver 0.0.0.0:8000"
-    echo "2. 生产环境: gunicorn autoDemo.wsgi:application --bind 0.0.0.0:8000"
+    echo "To restart service:"
+    echo "1. Development: python3 manage.py runserver 0.0.0.0:8000"
+    echo "2. Production: gunicorn autoDemo.wsgi:application --bind 0.0.0.0:8000"
     echo ""
-    echo "访问地址: http://您的服务器IP:8000"
+    echo "Access: http://your-server-ip:8000"
     
 else
-    echo "❌ 拉取代码失败，请检查网络连接和Git配置"
+    echo "ERROR: Failed to pull code - check network and Git config"
     exit 1
 fi
