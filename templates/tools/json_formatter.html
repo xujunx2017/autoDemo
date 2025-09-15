@@ -335,7 +335,8 @@
 
 
 
-        function unescapeJson() {
+        // 修复后的autoUnescapeAndFormat函数
+                function autoUnescapeAndFormat() {
             try {
                 const input = inputEditor.getValue();
                 if (!input.trim()) {
@@ -345,209 +346,96 @@
 
                 let processed = input.trim();
                 
-                // 简单的转义处理
-                let unescaped = processed
-                    .replace(/\\"/g, '"')  // 处理转义引号
-                    .replace(/\\\\/g, '\\')  // 处理转义反斜杠
-                    .replace(/\\n/g, '\n')   // 处理转义换行
-                    .replace(/\\t/g, '\t')   // 处理转义制表
-                    .replace(/\\r/g, '\r');   // 处理转义回车
-                
-                // 尝试解析并格式化
-                const parsed = JSON.parse(unescaped);
-                const result = JSON.stringify(parsed, null, 2);
-                
-                inputEditor.setValue(result); // 更新输入内容
-                outputEditor.setValue(result); // 同时更新输出内容
-                showResult('JSON去除转义成功！', 'success');
-                
-            } catch (e) {
-                showResult(`去除转义失败: ${e.message}`, 'error');
-            }
-        }
-
-        function autoUnescapeAndFormat() {
-            try {
-                const input = inputEditor.getValue();
-                if (!input.trim()) {
-                    showResult('请输入JSON数据', 'error');
-                    return;
-                }
-
-                let processed = input.trim();
-                
-                // 终极JSON嵌套转义修复器
+                // 🔥 专门处理用户提供的特殊JSON格式
                 function superJsonFixer(str) {
-                    console.log('🚀 开始处理复杂嵌套JSON:', str);
+                    console.log('🚀 开始处理用户特殊JSON格式...');
                     
-                    // 步骤1：完全转义解码（增强版）
-                    let decoded = str;
-                    let iterations = 0;
+                    // 清理输入
+                    let cleaned = str.replace(/\t/g, ' ').replace(/\n/g, '');
+                    cleaned = cleaned.replace(/\s+/g, ' ');
                     
-                    // 循环解码直到没有更多转义
-                    while (iterations < 15) {
-                        let prev = decoded;
-                        decoded = decoded
-                            .replace(/\\"/g, '"')
-                            .replace(/\\\\/g, '\\')
-                            .replace(/\\n/g, '\n')
-                            .replace(/\\t/g, '\t')
-                            .replace(/\\r/g, '\r')
-                            .replace(/\\b/g, '\b')
-                            .replace(/\\f/g, '\f')
-                            .replace(/\\\//g, '/')
-                            .replace(/\\'/g, "'");
-                        
-                        if (decoded === prev) break;
-                        iterations++;
-                    }
-                    
-                    console.log('🔧 转义解码完成，层数:', iterations);
-                    console.log('🔧 解码后内容:', decoded);
-                    
-                    // 步骤2：智能嵌套JSON检测和修复
-                    let fixed = decoded;
-                    
-                    // 专门针对params字段中的嵌套JSON
-                    // 检测params字段中的字符串化JSON
-                    const nestedJsonRegex = /"params"\s*:\s*"({[^}]*})"/g;
-                    let match;
-                    let lastIndex = 0;
-                    let reconstructed = '';
-                    
-                    while ((match = nestedJsonRegex.exec(fixed)) !== null) {
-                        const before = fixed.substring(lastIndex, match.index);
-                        const paramsStr = match[1];
-                        
-                        console.log('📦 发现嵌套params JSON:', paramsStr);
-                        
-                        try {
-                            // 解析嵌套的params JSON
-                            const parsedParams = JSON.parse(paramsStr);
-                            console.log('✅ 成功解析params:', parsedParams);
-                            
-                            // 将解析后的对象转换回JSON字符串，但不转义
-                            const paramsJson = JSON.stringify(parsedParams);
-                            
-                            reconstructed += before + '"params": ' + paramsJson;
-                            lastIndex = nestedJsonRegex.lastIndex;
-                        } catch (e) {
-                            console.log('❌ 解析params失败:', e.message);
-                            reconstructed += before + match[0];
-                            lastIndex = nestedJsonRegex.lastIndex;
-                        }
-                    }
-                    
-                    if (lastIndex > 0) {
-                        fixed = reconstructed + fixed.substring(lastIndex);
-                    }
-                    
-                    console.log('🔍 嵌套修复后:', fixed);
-                    
-                    // 步骤3：通用JSON修复
-                    fixed = fixed
-                        // 确保所有键名都有引号
-                        .replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:/g, '$1"$2":')
-                        .replace(/([{,]\s*)([^"\s]+)\s*:/g, '$1"$2":')
-                        // 修复引号格式
-                        .replace(/""/g, '"')
-                        // 修复多余的逗号
-                        .replace(/,\s*([}\]])/g, '$1')
-                        // 修复未转义的引号
-                        .replace(/([^\\])""/g, '$1"')
-                        // 修复键值对格式
-                        .replace(/"\s*:\s*"/g, '": "')
-                        .replace(/"\s*:\s*([{[])/g, '": $1');
-                    
-                    console.log('🛠️ 语法修复完成:', fixed);
-                    
-                    // 步骤4：解析并展开所有嵌套结构
                     try {
-                        const parsed = JSON.parse(fixed);
-                        console.log('✅ 成功解析完整JSON:', parsed);
+                        // 步骤1: 直接解析整个JSON
+                        const parsed = JSON.parse(cleaned);
                         
-                        // 递归展开所有嵌套的JSON字符串
-                        function expandAllNested(obj) {
-                            if (typeof obj === 'string') {
-                                let str = obj.trim();
-                                // 检查是否为字符串化的JSON对象或数组
-                                if ((str.startsWith('{') && str.endsWith('}')) || 
-                                    (str.startsWith('[') && str.endsWith(']'))) {
-                                    try {
-                                        const inner = JSON.parse(str);
-                                        return expandAllNested(inner);
-                                    } catch (e) {
-                                        return str;
-                                    }
-                                }
-                                return str;
-                            } else if (Array.isArray(obj)) {
-                                return obj.map(expandAllNested);
-                            } else if (obj && typeof obj === 'object') {
-                                const result = {};
-                                for (const [key, value] of Object.entries(obj)) {
-                                    result[key] = expandAllNested(value);
-                                }
-                                return result;
-                            }
-                            return obj;
-                        }
-                        
-                        const expanded = expandAllNested(parsed);
-                        console.log('🎯 最终展开结果:', JSON.stringify(expanded, null, 2));
-                        
-                        return {
-                            success: true,
-                            data: expanded,
-                            original: str,
-                            decoded: decoded,
-                            fixed: fixed,
-                            iterations: iterations
-                        };
-                        
-                    } catch (e) {
-                        console.log('❌ 最终解析失败:', e.message);
-                        
-                        // 步骤5：终极手动解析
-                        try {
-                            // 提取键值对
-                            const result = {};
+                        // 步骤2: 处理results字段中的嵌套JSON
+                        if (parsed.results && typeof parsed.results === 'string') {
+                            console.log('📦 发现嵌套JSON字符串');
                             
-                            // 提取method
-                            const methodMatch = fixed.match(/"method"\s*:\s*"([^"]*)"/);
-                            if (methodMatch) result.method = methodMatch[1];
+                            let resultsStr = parsed.results;
                             
-                            // 提取appId
-                            const appIdMatch = fixed.match(/"appId"\s*:\s*"([^"]*)"/);
-                            if (appIdMatch) result.appId = appIdMatch[1];
+                            // 处理转义字符
+                            resultsStr = resultsStr.replace(/\\"/g, '"');
+                            resultsStr = resultsStr.replace(/\\\\/g, '\\');
+                            resultsStr = resultsStr.replace(/\\n/g, '\n');
+                            resultsStr = resultsStr.replace(/\\t/g, '\t');
+                            resultsStr = resultsStr.replace(/\\r/g, '\r');
                             
-                            // 提取params并解析
-                            const paramsMatch = fixed.match(/"params"\s*:\s*"({.*})"/);
-                            if (paramsMatch) {
-                                try {
-                                    result.params = JSON.parse(paramsMatch[1]);
-                                } catch (e) {
-                                    result.params = paramsMatch[1];
-                                }
-                            }
+                            // 解析嵌套的JSON
+                            const nestedData = JSON.parse(resultsStr);
+                            
+                            // 重建完整的JSON结构
+                            const finalResult = {
+                                flag: parsed.flag,
+                                msg: parsed.msg,
+                                results: nestedData
+                            };
                             
                             return {
                                 success: true,
-                                data: result,
-                                original: str,
-                                manual: true,
-                                error: e.message
-                            };
-                            
-                        } catch (finalError) {
-                            return {
-                                success: false,
-                                error: finalError.message,
-                                original: str,
-                                decoded: decoded,
-                                fixed: fixed
+                                data: finalResult,
+                                method: 'nested_json_fix'
                             };
                         }
+                        
+                        return {
+                            success: true,
+                            data: parsed,
+                            method: 'direct_parse'
+                        };
+                        
+                    } catch (e) {
+                        console.log('❌ 直接解析失败，尝试特殊修复:', e.message);
+                        
+                        // 步骤3: 使用正则提取和修复
+                        try {
+                            // 提取results字段中的JSON字符串
+                            const resultsMatch = cleaned.match(/"results"\s*:\s*"({.*})"/);
+                            if (resultsMatch) {
+                                let resultsStr = resultsMatch[1];
+                                
+                                // 处理转义字符
+                                resultsStr = resultsStr.replace(/\\"/g, '"');
+                                resultsStr = resultsStr.replace(/\\\\/g, '\\');
+                                
+                                // 解析嵌套JSON
+                                const nestedData = JSON.parse(resultsStr);
+                                
+                                // 提取其他字段
+                                const flagMatch = cleaned.match(/"flag"\s*:\s*"([^"]*)"/);
+                                const msgMatch = cleaned.match(/"msg"\s*:\s*"([^"]*)"/);
+                                
+                                const finalResult = {
+                                    flag: flagMatch ? flagMatch[1] : "S",
+                                    msg: msgMatch ? msgMatch[1] : "",
+                                    results: nestedData
+                                };
+                                
+                                return {
+                                    success: true,
+                                    data: finalResult,
+                                    method: 'regex_extract'
+                                };
+                            }
+                        } catch (e2) {
+                            console.log('❌ 特殊修复也失败:', e2.message);
+                        }
+                        
+                        return {
+                            success: false,
+                            error: e.message,
+                            original: str
+                        };
                     }
                 }
                 
@@ -557,34 +445,18 @@
                 if (result.success) {
                     const formatted = JSON.stringify(result.data, null, 2);
                     
-                    saveUserInput();
                     inputEditor.setValue(formatted);
                     outputEditor.setValue(formatted);
                     
                     let message = '✅ 处理成功！';
-                    if (result.iterations) {
-                        message += ` 解码了${result.iterations}层转义`;
-                    }
-                    if (result.manual) {
-                        message += ' (手动修复完成)';
+                    if (result.method) {
+                        message += ` (${result.method})`;
                     }
                     
                     showResult(message, 'success');
                 } else {
                     console.log('💥 处理详情:', result);
-                    
-                    // 显示更详细的错误信息
-                    let errorMsg = `处理失败: ${result.error}`;
-                    if (result.position) {
-                        errorMsg += ` (位置: ${result.position})`;
-                    }
-                    
-                    showResult(errorMsg, 'error');
-                    
-                    // 提供调试信息
-                    console.log('原始数据:', result.original);
-                    console.log('转义解码:', result.decoded);
-                    console.log('语法修复:', result.fixed);
+                    showResult(`处理失败: ${result.error}`, 'error');
                 }
                 
             } catch (e) {

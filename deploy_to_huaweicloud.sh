@@ -10,12 +10,12 @@ echo "开始部署到华为云..."
 # 克隆代码
 # 请替换为您的实际仓库地址
 echo "请确保已创建远程仓库并替换下面的URL"
-echo "GitHub: https://github.com/YOUR_USERNAME/autoDemo.git"
-echo "Gitee: https://gitee.com/YOUR_USERNAME/autoDemo.git"
+echo "GitHub: https://github.com/xujunx2017/autoDemo.git"
+echo "Gitee: https://gitee.com/xujunx2017/autoDemo.git"
 echo "华为云CodeHub: https://codehub.devcloud.cn-north-4.huaweicloud.com/YOUR_USERNAME/autoDemo.git"
 
 # 使用您实际的仓库URL
-git clone https://github.com/YOUR_USERNAME/autoDemo.git
+git clone https://github.com/xujunx2017/autoDemo.git
 cd autoDemo
 
 # 颜色输出
