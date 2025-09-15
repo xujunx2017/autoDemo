@@ -2,48 +2,48 @@
 chcp 65001
 setlocal enabledelayedexpansion
 
-echo 🔄 自动同步代码到华为云...
+echo Starting automatic sync to Huawei Cloud...
 echo.
 
-REM 检查是否在Git仓库中
+REM Check if in Git repository
 git rev-parse --git-dir >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ❌ 当前目录不是Git仓库
-    echo 💡 请确保在 autoDemo 目录下运行
+    echo ERROR: Not in a Git repository
+    echo Please ensure you are in the autoDemo directory
     pause
     exit /b 1
 )
 
-REM 检查是否有未提交的更改
+REM Check for uncommitted changes
 git status --porcelain | findstr /r /c:"." >nul
 if %errorlevel% equ 0 (
-    echo 📋 发现未提交的更改，正在提交...
+    echo Found uncommitted changes, committing...
     git add .
     git commit -m "Auto sync: %date% %time%"
-    echo ✅ 本地更改已提交
+    echo Local changes committed successfully
 ) else (
-    echo ✅ 没有新的更改需要提交
+    echo No new changes to commit
 )
 
-REM 推送到远程仓库
-echo 🚀 推送到GitHub...
+REM Push to remote repository
+echo Pushing to GitHub...
 git push origin main
 if %errorlevel% neq 0 (
-    echo ❌ 推送到GitHub失败
+    echo ERROR: Failed to push to GitHub
     pause
     exit /b 1
 )
 
-echo ✅ 代码已同步到GitHub
+echo Code has been synced to GitHub successfully
 
 echo.
-echo 🌩️ 接下来请在华为云服务器上运行以下命令：
+echo Next steps on Huawei Cloud server:
 echo.
-echo ssh 用户名@华为云IP地址
+echo ssh username@huawei-cloud-ip
 echo cd /path/to/autoDemo
 echo git pull origin main
 echo.
-echo 或者运行华为云上的自动更新脚本
+echo Or run the auto-update script on Huawei Cloud:
 echo bash update_from_github.sh
 echo.
 
