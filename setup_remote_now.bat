@@ -1,47 +1,44 @@
 @echo off
-REM Quick remote repository setup
+REM Simple remote repository setup
 chcp 65001 >nul 2>&1
 
 cd /d "%~dp0"
 
-echo === Remote Repository Setup ===
+echo === autoDemo Remote Setup ===
+echo.
+
+echo 📋 Current Git Status:
+git status --short
+echo.
+
+echo 🔗 Setting up remote repository...
 echo.
 
 :: Remove existing remote
 git remote remove origin 2>nul
-echo Removed existing remote (if any)
 
-echo.
-echo Please select your platform:
-echo 1. GitHub
-echo 2. Gitee
-echo 3. Huawei Cloud CodeHub
-echo 4. Other
-echo.
-
-set /p platform=Enter your choice (1-4): 
-set /p username=Enter your username: 
-
-if "%platform%"=="1" (
-    set remote_url=https://github.com/%username%/autoDemo.git
-) else if "%platform%"=="2" (
-    set remote_url=https://gitee.com/%username%/autoDemo.git
-) else if "%platform%"=="3" (
-    set remote_url=https://codehub.devcloud.cn-north-4.huaweicloud.com/%username%/autoDemo.git
-) else (
-    set /p remote_url=Enter full repository URL: 
+echo Please enter your GitHub username:
+set /p username=Username: 
+if "%username%"=="" (
+    echo Username is required!
+    pause
+    exit /b 1
 )
 
-echo.
-echo Setting remote to: %remote_url%
-git remote add origin %remote_url%
+:: Set remote URL
+git remote add origin https://github.com/%username%/autoDemo.git
 
 echo.
-echo Pushing to remote repository...
-git branch -M main
+echo 📤 Pushing to GitHub...
+git branch -M main 2>nul
 git push -u origin main
 
 echo.
-echo Setup complete!
-echo Repository URL: %remote_url%
+echo ✅ Setup complete!
+echo Repository: https://github.com/%username%/autoDemo
+echo.
+echo 🎯 Next steps:
+echo 1. Visit your repository on GitHub
+echo 2. Check README.md for deployment guide
+echo 3. Use deploy_to_huaweicloud.sh for cloud deployment
 pause
